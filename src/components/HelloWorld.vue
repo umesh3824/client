@@ -1,57 +1,97 @@
 <template>
   <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+    <p>{{ error }}</p>
+    <div class="con">
+      <qrcode-stream class="qr-code-scanner" @decode="onDecode" @init="onInit"></qrcode-stream>
+    </div>
   </div>
 </template>
 
 <script>
+import { QrcodeStream } from 'vue3-qrcode-reader'
+import SocketioService from './services/socketio.service.js';
 export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
+  data() {
+    return {
+      error: '',
+    }
+  },
+  components: {
+    QrcodeStream
+  },
+  methods: {
+    async onInit(promise) {
+      try {
+        const { capabilities } = await promise
+        console.log(capabilities)
+        // successfully initialized
+      } catch (error) {
+        if (error.name === 'NotAllowedError') {
+          this.error = "user denied camera access permisson"
+        } else if (error.name === 'NotFoundError') {
+          this.error = "no suitable camera device installed"
+        } else if (error.name === 'NotSupportedError') {
+          this.error = "page is not served over HTTPS (or localhost)"
+        } else if (error.name === 'NotReadableError') {
+          this.error = "maybe camera is already in use"
+        } else if (error.name === 'OverconstrainedError') {
+          this.error = "did you requested the front camera although there is none?"
+        } else if (error.name === 'StreamApiNotSupportedError') {
+          this.error = "browser seems to be lacking features"
+        }
+      } finally {
+        // hide loading indicator
+      }
+    },
+    onDecode(decodedString) {
+      console.log("decodedString", decodedString)
+    }
+  },
+  created() {
+    SocketioService.setupSocketConnection();
+  },
+  beforeUnmount() {
+    SocketioService.disconnect();
+  },
+  messageChannel(data) {
+      this.socketMessage = data
+    }
 }
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.hello{
+  display: flex;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+}
+.con {
+  width: 300px;
+  height: 300px;
+}
+
+.qr-code-scanner{
+  border: 2px solid #42b983;
+  border-style: dashed;
+  border-radius: 5px;
+}
+
 h3 {
   margin: 40px 0 0;
 }
+
 ul {
   list-style-type: none;
   padding: 0;
 }
+
 li {
   display: inline-block;
   margin: 0 10px;
 }
+
 a {
   color: #42b983;
 }
